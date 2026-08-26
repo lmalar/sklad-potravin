@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  sklad_app:
+    build: .
+    container_name: muj_sklad
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
