@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- Filtr, vyhledávání, CSV a smazání skladu -->
+<div class="card mb-3 shadow-sm">
+    <div class="card-body py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <form method="GET" class="d-flex align-items-center m-0">
+            <label class="me-2 fw-bold text-nowrap">Sklad:</label>
+            <select name="location" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                <option value="">Všechny</option>
+                {% for loc in locations %}
+                <option value="{{ loc }}" {% if loc == selected_loc %}selected{% endif %}>{{ loc }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        
+        <input type="text" id="liveSearch" class="form-control form-control-sm w-auto flex-grow-1 mx-md-3" placeholder="Hledat produkt..." onkeyup="filterTable()">
+        
+        <!-- NOVÉ: Tlačítko pro export zakomponované do této lišty -->
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('export_csv') }}" class="btn btn-sm btn-outline-success" title="Stáhnout do Excelu"><i class="bi bi-file-earmark-spreadsheet"></i> CSV</a>
+            
+            {% if selected_loc %}
+            <form method="POST" action="{{ url_for('delete_location') }}" onsubmit="return confirm('Smazat CELÝ SKLAD včetně položek?');" class="m-0">
+                <input type="hidden" name="location" value="{{ selected_loc }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Smazat tento sklad"><i class="bi bi-trash"></i></button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Tabulka produktů -->
+<div class="table-responsive bg-white shadow-sm rounded">
+    <table class="table table-hover mb-0" id="inventoryTable">
+        <thead class="table-light">
+            <tr>
+                <th><a href="?sort=name{% if selected_loc %}&location={{ selected_loc }}{% endif %}" class="text-dark text-decoration-none">Produkt ⇅</a></th>
+                <th>Množství</th>
+                <th><a href="?sort=location{% if selected_loc %}&location={{ selected_loc }}{% endif %}" class="text-dark text-decoration-none">Sklad ⇅</a></th>
+                <th><a href="?sort=expiration{% if selected_loc %}&location={{ selected_loc }}{% endif %}" class="text-dark text-decoration-none">Expirace ⇅</a></th>
+                <th>Akce</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr class="{{ get_expiration_status(item.expiration) }}">
+                <td class="searchable-text">
+                    <div class="fw-bold">{{ item.name }}</div>
+                    <small class="text-muted">{{ item.barcode or '' }}</small>
+                </td>
+                <td class="align-middle">
+                    <div class="d-inline-flex align-items-center">
+                        <form method="POST" action="{{ url_for('update_count', id=item.id, action='decrease') }}" class="m-0" onsubmit="{% if item.count <= 1 %}return confirm('Odebíráte poslední kus. Smazat ze skladu?');{% endif %}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0 fs-5">-</button>
+                        </form>
+                        <span class="fw-bold fs-5 mx-2">{{ item.count }}x</span>
+                        <form method="POST" action="{{ url_for('update_count', id=item.id, action='increase') }}" class="m-0 me-2">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0 fs-5">+</button>
+                        </form>
+                        <span class="text-muted text-nowrap">{% if item.package_size %}{{ format_size(item.package_size) }} {% endif %}{{ item.unit }}</span>
+                    </div>
+                </td>
+                <td class="align-middle searchable-text"><span class="badge bg-secondary">{{ item.location }}</span></td>
+                <td class="align-middle">{% if item.expiration %}{{ item.expiration.strftime('%m/%Y') }}{% else %}-{% endif %}</td>
+                <td class="align-middle text-nowrap">
+                    <a href="{{ url_for('edit', id=item.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                    <form method="POST" action="{{ url_for('delete', id=item.id) }}" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Opravdu smazat?')"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function filterTable() {
+    let input = document.getElementById("liveSearch").value.toLowerCase();
+    let rows = document.querySelectorAll("#inventoryTable tbody tr");
+    rows.forEach(row => {
+        let text = Array.from(row.querySelectorAll(".searchable-text")).map(td => td.innerText.toLowerCase()).join(" ");
+        row.style.display = text.includes(input) ? "" : "none";
+    });
+}
+</script>
+{% endblock %}

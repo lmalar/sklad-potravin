@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        
+        <!-- Sekce kamery (naše vlastní čisté řešení) -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body text-center">
+                <h4 class="card-title mb-3">Skenovat kód</h4>
+                
+                <div id="camera-ui-container">
+                    <button type="button" class="btn btn-success btn-lg mb-2" id="start-camera-btn">
+                        <i class="bi bi-camera-video"></i> Zapnout kameru
+                    </button>
+                    <p class="text-muted small">nebo zadejte EAN kód ručně níže</p>
+                </div>
+
+                <!-- Zde se vykreslí obraz z kamery (zpočátku skryto) -->
+                <div id="reader" style="width:100%; max-width: 500px; margin: 0 auto; display: none; border-radius: 12px; overflow: hidden;"></div>
+                
+                <button type="button" class="btn btn-outline-danger mt-3" id="stop-camera-btn" style="display: none;">
+                    Zavřít kameru
+                </button>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h4 class="card-title mb-4">Údaje o produktu</h4>
+                <form method="POST" action="{{ url_for('add') }}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Čárový kód (EAN)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="barcode" name="barcode" placeholder="Např. 859123456789">
+                            <button class="btn btn-outline-secondary" type="button" id="btn-fetch">Najít v databázi</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Název produktu</label>
+                        <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-4 mb-3">
+                            <label class="form-label">Kusů / Balení</label>
+                            <input type="number" min="1" class="form-control" name="count" value="1" required>
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label">Velikost</label>
+                            <input type="number" step="0.01" class="form-control" name="package_size" placeholder="-">
+                        </div>
+                        <div class="col-4 mb-3">
+                            <label class="form-label">Jednotka</label>
+                            <select class="form-select" name="unit">
+                                <option value="ks">ks</option>
+                                <option value="g">g</option>
+                                <option value="kg">kg</option>
+                                <option value="ml">ml</option>
+                                <option value="l">l</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Sklad / Umístění</label>
+                            <select class="form-select mb-2" name="location_select" id="location_select" onchange="toggleNewLocation()">
+                                {% for loc in locations %}
+                                <option value="{{ loc }}" {% if loc == last_loc %}selected{% endif %}>{{ loc }}</option>
+                                {% endfor %}
+                                <option value="_NEW_">➕ Přidat nový sklad...</option>
+                            </select>
+                            <input type="text" class="form-control" name="location_new" id="location_new" placeholder="Zadejte název..." style="display: none;">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Expirace</label>
+                            <input type="month" class="form-control" name="expiration">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Zpět</a>
+                        <button type="submit" class="btn btn-success px-4">Uložit do skladu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script>
+    function toggleNewLocation() {
+        let select = document.getElementById('location_select');
+        let input = document.getElementById('location_new');
+        if (select.value === '_NEW_') {
+            input.style.display = 'block';
+            input.required = true;
+        } else {
+            input.style.display = 'none';
+            input.required = false;
+        }
+    }
+    toggleNewLocation();
+
+    // Proměnné pro naši čistou implementaci skeneru
+    let html5QrCode;
+    let lastScannedCode = "";
+
+    const btnStart = document.getElementById('start-camera-btn');
+    const btnStop = document.getElementById('stop-camera-btn');
+    const cameraContainer = document.getElementById('camera-ui-container');
+    const readerDiv = document.getElementById('reader');
+
+    // Spuštění kamery
+    btnStart.addEventListener('click', () => {
+        cameraContainer.style.display = 'none';
+        readerDiv.style.display = 'block';
+        btnStop.style.display = 'inline-block';
+
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.start(
+            { facingMode: "environment" }, // Natvrdo vynutí zadní kameru
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 150 }
+            },
+            onScanSuccess,
+            (errorMessage) => {
+                // Skryjeme průběžné chyby, kdy to zrovna nevidí kód
+            }
+        ).catch((err) => {
+            console.error(err);
+            alert("Kameru se nepodařilo spustit. Zkontrolujte oprávnění v prohlížeči.");
+            stopCamera();
+        });
+    });
+
+    // Funkce pro bezpečné vypnutí kamery
+    function stopCamera() {
+        if (html5QrCode) {
+            html5QrCode.stop().then(() => {
+                html5QrCode.clear();
+            }).catch(err => console.log(err));
+        }
+        cameraContainer.style.display = 'block';
+        readerDiv.style.display = 'none';
+        btnStop.style.display = 'none';
+    }
+
+    btnStop.addEventListener('click', stopCamera);
+
+    // Co se stane po úspěšném naskenování
+    function onScanSuccess(decodedText) {
+        if (decodedText === lastScannedCode) return;
+        lastScannedCode = decodedText;
+
+        if (navigator.vibrate) navigator.vibrate(200);
+
+        let barcodeInput = document.getElementById('barcode');
+        barcodeInput.value = decodedText;
+        barcodeInput.style.backgroundColor = "#e8f5e9";
+        setTimeout(() => { barcodeInput.style.backgroundColor = ""; }, 500);
+
+        // Ihned po přečtení kameru vypneme
+        stopCamera();
+        
+        // Jdeme hledat do databáze
+        fetchProductData(decodedText);
+    }
+    
+    // Hledání po ručním zadání a kliknutí na tlačítko
+    document.getElementById('btn-fetch').addEventListener('click', function() {
+        let code = document.getElementById('barcode').value;
+        if(code) { fetchProductData(code); }
+    });
+
+    function fetchProductData(barcode) {
+        let btn = document.getElementById('btn-fetch');
+        let oldText = btn.innerText;
+        btn.innerText = "Hledám...";
+        btn.disabled = true;
+
+        fetch('/api/lookup/' + barcode)
+            .then(response => response.json())
+            .then(data => {
+                if(data.found && data.name) {
+                    document.getElementById('name').value = data.name;
+                    
+                    if(data.raw_quantity) {
+                        let q = data.raw_quantity.replace(',', '.').trim();
+                        let match = q.match(/^([\d.]+)\s*([a-zA-Z]+)$/);
+                        if(match) {
+                            document.querySelector('input[name="package_size"]').value = match[1];
+                            let unitSelect = document.querySelector('select[name="unit"]');
+                            let found = Array.from(unitSelect.options).some(o => o.value.toLowerCase() === match[2].toLowerCase());
+                            if(found) unitSelect.value = match[2].toLowerCase();
+                        } else {
+                            document.querySelector('input[name="package_size"]').value = q.replace(/[^0-9.]/g, '');
+                        }
+                    }
+                } else {
+                    alert("Nenalezeno. Zadejte ručně.");
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Chyba při komunikaci s databází.");
+            })
+            .finally(() => {
+                btn.innerText = oldText;
+                btn.disabled = false;
+            });
+    }
+</script>
+{% endblock %}
