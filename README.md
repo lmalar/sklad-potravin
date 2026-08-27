@@ -17,7 +17,7 @@ Chytrá webová aplikace pro správu domácích zásob (špajz, lednice, mrazák
 * **Nasazení:** Docker & Docker Compose
 
 ## Struktura projektu
-
+```text
 sklad-potravin/
 ├── docker-compose.yml     # Konfigurace pro Docker
 ├── Dockerfile             # Předpis pro sestavení obrazu
