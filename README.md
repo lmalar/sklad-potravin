@@ -1,24 +1,34 @@
-# 📦 Sklad potravin (Domácí evidence zásob)
+# Sklad potravin
 
-Jednoduchá a responzivní webová aplikace pro správu domácích zásob. Umožňuje snadno evidovat potraviny ve spíži, lednici či mrazáku pomocí skenování čárových kódů z mobilu nebo webkamery. 
+Chytrá webová aplikace pro správu domácích zásob (špajz, lednice, mrazák). Aplikace je navržena primárně pro mobilní telefony, funguje jako PWA (lze ji nainstalovat na plochu) a obsahuje integrovanou čtečku čárových kódů s automatickým dohledáváním názvů v mezinárodních databázích.
 
-## ✨ Hlavní funkce
-*   **Skenování čárových kódů:** Integrovaná čtečka kódů přes kameru zařízení (využívá HTML5).
-*   **Chytré doplňování:** Automatické načítání názvů produktů z celosvětové databáze [Open Food Facts](https://cz.openfoodfacts.org/).
-*   **Rychlá správa kusů:** Tlačítka `+` a `-` pro okamžitou úpravu stavu zásob (při snížení na 0 se produkt automaticky smaže).
-*   **Sledování expirace:** Barevné zvýraznění produktů, kterým se blíží datum spotřeby (žlutá pro aktuální/příští měsíc, červená pro prošlé).
-*   **Dynamické sklady:** Aplikace si pamatuje vaše umístění (např. Lednice, Sklep) a umožňuje jejich snadné přidávání i hromadné mazání.
+## Hlavní funkce
+* **Skenování z kamery:** Integrovaná čtečka EAN kódů plně optimalizovaná pro mobilní zařízení.
+* **Automatické doplňování:** Kaskádové vyhledávání produktu podle kódu v databázích *Open Food Facts*, *Open Beauty Facts* a *Open Products Facts* (potraviny, kosmetika, drogerie). Aplikace sama extrahuje název a gramáž.
+* **Chytrý přehled:** Živé vyhledávání, filtrování podle skladů a řazení kliknutím na hlavičky sloupců (Produkt, Sklad, Expirace).
+* **Hlídání trvanlivosti:** Barevné podbarvení položek, kterým se blíží nebo už vypršela expirace (žlutá/červená).
+* **PWA (Progresivní webová aplikace):** Možnost přidat si aplikaci na domovskou obrazovku telefonu jako plnohodnotnou nativní aplikaci.
+* **Záloha dat:** Export celého skladu do formátu CSV (kompatibilní s MS Excel s podporou české diakritiky).
+* **Správa skladů:** Snadné přidávání nových lokací a možnost smazat celou lokaci včetně obsahu.
 
-## 🚀 Technologie
-*   **Backend:** Python 3, Flask, SQLAlchemy (SQLite)
-*   **Frontend:** HTML5, Bootstrap 5, JavaScript (html5-qrcode)
-*   **Prostředí:** Docker a Docker Compose
+## Technologický stack
+* **Backend:** Python 3.11, Flask, SQLAlchemy (SQLite)
+* **Frontend:** HTML5, Bootstrap 5, Vanilla JS, html5-qrcode
+* **Nasazení:** Docker & Docker Compose
 
-## 🛠️ Instalace a spuštění
-
-Aplikace je plně kontejnerizovaná pro snadné nasazení pomocí Dockeru.
-
-1. Naklonujte si tento repozitář:
-   ```bash
-   git clone [https://github.com/VASE_JMENO/sklad-potravin.git](https://github.com/VASE_JMENO/sklad-potravin.git)
-   cd sklad-potravin
+## Struktura projektu
+```text
+sklad-potravin/
+├── docker-compose.yml     # Konfigurace pro Docker
+├── Dockerfile             # Předpis pro sestavení obrazu
+├── requirements.txt       # Python závislosti (Flask, SQLAlchemy, requests)
+├── app.py                 # Hlavní logika aplikace (backend)
+├── data/                  # Zde se automaticky vytvoří databáze sklad.db
+├── static/                
+│   ├── manifest.json      # Konfigurace pro PWA (instalace na mobil)
+│   └── sw.js              # Service Worker pro PWA
+└── templates/             
+    ├── base.html          # Hlavní šablona a hlavička
+    ├── index.html         # Přehled skladu a tabulka
+    ├── add.html           # Formulář a skener kódů
+    └── edit.html          # Úprava existující položky
