@@ -16,6 +16,23 @@ Chytrá webová aplikace pro správu domácích zásob (špajz, lednice, mrazák
 * **Frontend:** HTML5, Bootstrap 5, Vanilla JS, html5-qrcode
 * **Nasazení:** Docker & Docker Compose
 
+## Struktura projektu
+
+sklad-potravin/
+├── docker-compose.yml     # Konfigurace pro Docker
+├── Dockerfile             # Předpis pro sestavení obrazu
+├── requirements.txt       # Python závislosti (Flask, SQLAlchemy, requests)
+├── app.py                 # Hlavní logika aplikace (backend)
+├── data/                  # Zde se automaticky vytvoří databáze sklad.db
+├── static/                
+│   ├── manifest.json      # Konfigurace pro PWA (instalace na mobil)
+│   └── sw.js              # Service Worker pro PWA
+└── templates/             
+    ├── base.html          # Hlavní šablona a hlavička
+    ├── index.html         # Přehled skladu a tabulka
+    ├── add.html           # Formulář a skener kódů
+    └── edit.html          # Úprava existující položky
+
 
 ## Instalace a spuštění (Docker)
 
@@ -38,22 +55,6 @@ services:
       - ./data:/app/data
     restart: unless-stopped
 
-## Struktura projektu
-```text
-sklad-potravin/
-├── docker-compose.yml     # Konfigurace pro Docker
-├── Dockerfile             # Předpis pro sestavení obrazu
-├── requirements.txt       # Python závislosti (Flask, SQLAlchemy, requests)
-├── app.py                 # Hlavní logika aplikace (backend)
-├── data/                  # Zde se automaticky vytvoří databáze sklad.db
-├── static/                
-│   ├── manifest.json      # Konfigurace pro PWA (instalace na mobil)
-│   └── sw.js              # Service Worker pro PWA
-└── templates/             
-    ├── base.html          # Hlavní šablona a hlavička
-    ├── index.html         # Přehled skladu a tabulka
-    ├── add.html           # Formulář a skener kódů
-    └── edit.html          # Úprava existující položky
 
 
 
