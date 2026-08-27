@@ -32,7 +32,7 @@ sklad-potravin/
     ├── index.html         # Přehled skladu a tabulka
     ├── add.html           # Formulář a skener kódů
     └── edit.html          # Úprava existující položky
-
+```
 
 ## Instalace a spuštění (Docker)
 
@@ -54,6 +54,7 @@ services:
     volumes:
       - ./data:/app/data
     restart: unless-stopped
+```
 
 
 
