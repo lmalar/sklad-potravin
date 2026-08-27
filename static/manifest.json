@@ -1,0 +1,15 @@
+{
+  "name": "Sklad potravin",
+  "short_name": "Sklad",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#198754",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1046/1046774.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
