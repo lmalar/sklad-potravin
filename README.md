@@ -33,6 +33,8 @@ sklad-potravin/
     ├── add.html           # Formulář a skener kódů
     └── edit.html          # Úprava existující položky
 
+
+
 ## Instalace a spuštění (Docker)
 
 Nejjednodušší a doporučený způsob, jak aplikaci spustit, je pomocí Dockeru. Databáze se ukládá do namapované složky `data/`, takže o svá data nepřijdete ani při aktualizaci nebo restartu kontejneru.
