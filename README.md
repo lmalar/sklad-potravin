@@ -32,3 +32,24 @@ sklad-potravin/
     ├── index.html         # Přehled skladu a tabulka
     ├── add.html           # Formulář a skener kódů
     └── edit.html          # Úprava existující položky
+
+## Instalace a spuštění (Docker)
+
+Nejjednodušší a doporučený způsob, jak aplikaci spustit, je pomocí Dockeru. Databáze se ukládá do namapované složky `data/`, takže o svá data nepřijdete ani při aktualizaci nebo restartu kontejneru.
+
+### 1. Příprava
+Ujistěte se, že máte na svém serveru (nebo Raspberry Pi / PC) nainstalovaný **Docker** a **Docker Compose**. Naklonujte si tento repozitář nebo vytvořte výše uvedenou strukturu souborů.
+
+Příklad souboru `docker-compose.yml`:
+```yaml
+version: '3.8'
+
+services:
+  web:
+    build: .
+    container_name: sklad_potravin
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
