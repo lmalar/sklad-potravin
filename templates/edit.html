@@ -20,21 +20,24 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">Kategorie</label>
-                            <input list="category_list" class="form-control" name="category" value="{{ item.category }}" required>
-                            <datalist id="category_list">
+                            <select class="form-select mb-2" name="category_select" id="category_select" onchange="toggleNewField('category_select', 'category_new', true)">
                                 {% for c in categories %}
-                                <option value="{{ c }}"></option>
+                                <option value="{{ c }}" {% if item.category == c %}selected{% endif %}>{{ c }}</option>
                                 {% endfor %}
-                            </datalist>
+                                <option value="_NEW_">➕ Přidat novou kategorii...</option>
+                            </select>
+                            <input type="text" class="form-control" name="category_new" id="category_new" placeholder="Zadejte novou kategorii..." style="display: none;">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label">Skupina</label>
-                            <input list="group_list" class="form-control" name="group_name" value="{{ item.group_name }}">
-                            <datalist id="group_list">
+                            <select class="form-select mb-2" name="group_select" id="group_select" onchange="toggleNewField('group_select', 'group_new', true)">
+                                <option value="" {% if not item.group_name %}selected{% endif %}>-- Bez skupiny --</option>
                                 {% for g in groups %}
-                                <option value="{{ g }}"></option>
+                                <option value="{{ g }}" {% if item.group_name == g %}selected{% endif %}>{{ g }}</option>
                                 {% endfor %}
-                            </datalist>
+                                <option value="_NEW_">➕ Přidat novou skupinu...</option>
+                            </select>
+                            <input type="text" class="form-control" name="group_new" id="group_new" placeholder="Např. Těstoviny, Rajčata..." style="display: none;">
                         </div>
                     </div>
 
@@ -62,11 +65,13 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">Sklad / Umístění</label>
-                            <select class="form-select" name="location">
+                            <select class="form-select mb-2" name="location_select" id="location_select" onchange="toggleNewField('location_select', 'location_new', true)">
                                 {% for loc in locations %}
                                 <option value="{{ loc }}" {% if item.location == loc %}selected{% endif %}>{{ loc }}</option>
                                 {% endfor %}
+                                <option value="_NEW_">➕ Přidat nový sklad...</option>
                             </select>
+                            <input type="text" class="form-control" name="location_new" id="location_new" placeholder="Zadejte název..." style="display: none;">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label">Expirace</label>
@@ -77,7 +82,7 @@
                     <div class="d-flex justify-content-between mt-4">
                         <a href="{{ url_for('index') }}" class="btn btn-secondary">Zpět</a>
                         <div>
-                            <button type="submit" formaction="{{ url_for('delete', id=item.id) }}" class="btn btn-danger me-2" onclick="return confirm('Opravdu chcete tento produkt smazat?');">Smazat</button>
+                            <button type="submit" formaction="{{ url_for('delete', id=item.id) }}" formnovalidate class="btn btn-danger me-2" onclick="return confirm('Opravdu chcete tento produkt smazat?');">Smazat</button>
                             <button type="submit" class="btn btn-primary px-4">Uložit změny</button>
                         </div>
                     </div>
@@ -86,4 +91,23 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleNewField(selectId, inputId, isRequired) {
+        let select = document.getElementById(selectId);
+        let input = document.getElementById(inputId);
+        if (select.value === '_NEW_') {
+            input.style.display = 'block';
+            input.required = isRequired;
+        } else {
+            input.style.display = 'none';
+            input.required = false;
+        }
+    }
+    toggleNewField('location_select', 'location_new', true);
+    toggleNewField('category_select', 'category_new', true);
+    toggleNewField('group_select', 'group_new', true);
+</script>
 {% endblock %}
