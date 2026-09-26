@@ -201,12 +201,8 @@ def update_count(id, action):
             db.session.delete(item)
             deleted = True
     db.session.commit()
+    return jsonify({'success': True, 'count': 0 if deleted else item.count, 'deleted': deleted})
     
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True, 'count': 0 if deleted else item.count, 'deleted': deleted})
-        
-    return redirect(request.referrer or url_for('index'))
-
 @app.route('/api/lookup/<barcode>')
 def lookup(barcode):
     endpoints = [
