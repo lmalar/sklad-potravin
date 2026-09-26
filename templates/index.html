@@ -1,41 +1,52 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Skladové zásoby</h2>
-    <div>
-        <a href="{{ url_for('export_csv') }}" class="btn btn-outline-secondary me-2"><i class="bi bi-download"></i> Export CSV</a>
-        <a href="{{ url_for('add') }}" class="btn btn-success"><i class="bi bi-plus-lg"></i> Přidat</a>
-    </div>
-</div>
-
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ url_for('index') }}" class="d-flex gap-2">
-            <select name="location" class="form-select" onchange="this.form.submit()">
-                <option value="">Všechny sklady</option>
-                {% for loc in locations %}
-                <option value="{{ loc }}" {% if loc == selected_loc %}selected{% endif %}>{{ loc }}</option>
-                {% endfor %}
-            </select>
-            
-            <select name="category" class="form-select" onchange="this.form.submit()">
-                <option value="">Všechny kategorie</option>
-                {% for cat in categories %}
-                <option value="{{ cat }}" {% if cat == selected_cat %}selected{% endif %}>{{ cat }}</option>
-                {% endfor %}
-            </select>
+        <form method="GET" action="{{ url_for('index') }}" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label class="col-form-label fw-bold">Sklad:</label>
+            </div>
+            <div class="col-auto">
+                <select name="location" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Všechny</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc }}" {% if loc == selected_loc %}selected{% endif %}>{{ loc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-auto ms-2">
+                <label class="col-form-label fw-bold">Kategorie:</label>
+            </div>
+            <div class="col-auto">
+                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Všechny</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if cat == selected_cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col">
+                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Hledat produkt, kategorii nebo skupinu...">
+            </div>
+
+            <div class="col-auto">
+                <a href="{{ url_for('export_csv') }}" class="btn btn-outline-success btn-sm">CSV</a>
+            </div>
         </form>
     </div>
 </div>
 
 <div class="table-responsive bg-white rounded shadow-sm">
-    <table class="table table-hover align-middle mb-0">
+    <table class="table table-hover align-middle mb-0" id="inventoryTable">
         <thead class="table-light">
             <tr>
-                <th><a href="{{ url_for('index', sort='name', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Produkt</a></th>
+                <th><a href="{{ url_for('index', sort='name', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Produkt ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='category', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Zařazení ⇅</a></th>
                 <th>Množství</th>
-                <th><a href="{{ url_for('index', sort='location', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Sklad</a></th>
-                <th><a href="{{ url_for('index', sort='expiration', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Expirace</a></th>
+                <th><a href="{{ url_for('index', sort='location', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Sklad ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='expiration', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Expirace ⇅</a></th>
                 <th class="text-end">Akce</th>
             </tr>
         </thead>
@@ -45,33 +56,40 @@
                 <td>
                     <strong>{{ item.name }}</strong>
                     <br>
-                    <small class="text-muted">{{ item.category }} {% if item.group_name %} - {{ item.group_name }}{% endif %}</small>
-                    <br>
-                    <small class="text-muted">{{ item.barcode }}</small>
+                    <small class="text-muted">{{ item.barcode or '' }}</small>
+                </td>
+                <td>
+                    <span class="badge bg-info text-dark">{{ item.category }}</span>
+                    {% if item.group_name %}
+                    <span class="badge bg-light text-secondary border">{{ item.group_name }}</span>
+                    {% endif %}
                 </td>
                 <td>
                     <div class="d-flex align-items-center">
                         <form method="POST" action="{{ url_for('update_count', id=item.id, action='decrease') }}" class="m-0">
                             <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0">-</button>
                         </form>
-                        <span class="mx-2 fw-bold">{{ item.count }} {{ item.unit }}</span>
+                        <span class="mx-2 fw-bold">{{ item.count }}x</span>
                         <form method="POST" action="{{ url_for('update_count', id=item.id, action='increase') }}" class="m-0">
                             <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0">+</button>
                         </form>
-                        {% if item.package_size %}
-                        <small class="text-muted ms-2">({{ format_size(item.package_size) }}{{ item.unit }})</small>
-                        {% endif %}
+                        <span class="text-muted ms-2">
+                            {% if item.package_size %}{{ format_size(item.package_size) }} {% endif %}{{ item.unit }}
+                        </span>
                     </div>
                 </td>
-                <td>{{ item.location }}</td>
+                <td><span class="badge bg-secondary">{{ item.location }}</span></td>
                 <td>{{ item.expiration.strftime('%m/%Y') if item.expiration else '-' }}</td>
-                <td class="text-end">
-                    <a href="{{ url_for('edit', id=item.id) }}" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i></a>
+                <td class="text-end text-nowrap">
+                    <a href="{{ url_for('edit', id=item.id) }}" class="btn btn-sm btn-outline-primary">✏️</a>
+                    <form method="POST" action="{{ url_for('delete', id=item.id) }}" class="d-inline m-0" onsubmit="return confirm('Smazat položku {{ item.name }}?');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                    </form>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="5" class="text-center py-4 text-muted">Žádné položky k zobrazení.</td>
+                <td colspan="6" class="text-center py-4 text-muted">Žádné položky k zobrazení.</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -82,8 +100,19 @@
 <div class="mt-4 text-end">
     <form method="POST" action="{{ url_for('delete_location') }}" onsubmit="return confirm('Opravdu chcete smazat celý sklad {{ selected_loc }} a všechny položky v něm?');">
         <input type="hidden" name="location" value="{{ selected_loc }}">
-        <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> Smazat sklad "{{ selected_loc }}"</button>
+        <button type="submit" class="btn btn-outline-danger btn-sm">Smazat sklad "{{ selected_loc }}"</button>
     </form>
 </div>
 {% endif %}
+
+<script>
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('#inventoryTable tbody tr');
+    rows.forEach(row => {
+        let text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+});
+</script>
 {% endblock %}
