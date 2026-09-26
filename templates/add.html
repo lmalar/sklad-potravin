@@ -3,7 +3,6 @@
 <div class="row justify-content-center">
     <div class="col-md-8">
         
-        <!-- Sekce kamery (naše vlastní čisté řešení) -->
         <div class="card shadow-sm mb-4">
             <div class="card-body text-center">
                 <h4 class="card-title mb-3">Skenovat kód</h4>
@@ -15,7 +14,6 @@
                     <p class="text-muted small">nebo zadejte EAN kód ručně níže</p>
                 </div>
 
-                <!-- Zde se vykreslí obraz z kamery (zpočátku skryto) -->
                 <div id="reader" style="width:100%; max-width: 500px; margin: 0 auto; display: none; border-radius: 12px; overflow: hidden;"></div>
                 
                 <button type="button" class="btn btn-outline-danger mt-3" id="stop-camera-btn" style="display: none;">
@@ -40,6 +38,27 @@
                     <div class="mb-3">
                         <label class="form-label">Název produktu</label>
                         <input type="text" class="form-control" id="name" name="name" required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Kategorie</label>
+                            <input list="category_list" class="form-control" id="category" name="category" value="Potraviny" required>
+                            <datalist id="category_list">
+                                {% for c in categories %}
+                                <option value="{{ c }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Skupina</label>
+                            <input list="group_list" class="form-control" id="group_name" name="group_name" placeholder="např. Těstoviny">
+                            <datalist id="group_list">
+                                {% for g in groups %}
+                                <option value="{{ g }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
                     </div>
 
                     <div class="row">
@@ -107,16 +126,13 @@
     }
     toggleNewLocation();
 
-    // Proměnné pro naši čistou implementaci skeneru
     let html5QrCode;
     let lastScannedCode = "";
-
     const btnStart = document.getElementById('start-camera-btn');
     const btnStop = document.getElementById('stop-camera-btn');
     const cameraContainer = document.getElementById('camera-ui-container');
     const readerDiv = document.getElementById('reader');
 
-    // Spuštění kamery
     btnStart.addEventListener('click', () => {
         cameraContainer.style.display = 'none';
         readerDiv.style.display = 'block';
@@ -124,28 +140,20 @@
 
         html5QrCode = new Html5Qrcode("reader");
         html5QrCode.start(
-            { facingMode: "environment" }, // Natvrdo vynutí zadní kameru
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 150 }
-            },
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 250, height: 150 } },
             onScanSuccess,
-            (errorMessage) => {
-                // Skryjeme průběžné chyby, kdy to zrovna nevidí kód
-            }
+            (errorMessage) => {}
         ).catch((err) => {
             console.error(err);
-            alert("Kameru se nepodařilo spustit. Zkontrolujte oprávnění v prohlížeči.");
+            alert("Kameru se nepodařilo spustit. Zkontrolujte oprávnění.");
             stopCamera();
         });
     });
 
-    // Funkce pro bezpečné vypnutí kamery
     function stopCamera() {
         if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                html5QrCode.clear();
-            }).catch(err => console.log(err));
+            html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(err => console.log(err));
         }
         cameraContainer.style.display = 'block';
         readerDiv.style.display = 'none';
@@ -154,11 +162,9 @@
 
     btnStop.addEventListener('click', stopCamera);
 
-    // Co se stane po úspěšném naskenování
     function onScanSuccess(decodedText) {
         if (decodedText === lastScannedCode) return;
         lastScannedCode = decodedText;
-
         if (navigator.vibrate) navigator.vibrate(200);
 
         let barcodeInput = document.getElementById('barcode');
@@ -166,14 +172,10 @@
         barcodeInput.style.backgroundColor = "#e8f5e9";
         setTimeout(() => { barcodeInput.style.backgroundColor = ""; }, 500);
 
-        // Ihned po přečtení kameru vypneme
         stopCamera();
-        
-        // Jdeme hledat do databáze
         fetchProductData(decodedText);
     }
     
-    // Hledání po ručním zadání a kliknutí na tlačítko
     document.getElementById('btn-fetch').addEventListener('click', function() {
         let code = document.getElementById('barcode').value;
         if(code) { fetchProductData(code); }
@@ -191,6 +193,9 @@
                 if(data.found && data.name) {
                     document.getElementById('name').value = data.name;
                     
+                    if(data.category) document.getElementById('category').value = data.category;
+                    if(data.group) document.getElementById('group_name').value = data.group;
+                    
                     if(data.raw_quantity) {
                         let q = data.raw_quantity.replace(',', '.').trim();
                         let match = q.match(/^([\d.]+)\s*([a-zA-Z]+)$/);
@@ -204,7 +209,7 @@
                         }
                     }
                 } else {
-                    alert("Nenalezeno. Zadejte ručně.");
+                    alert("Nenalezeno v databázi. Zadejte údaje ručně.");
                 }
             })
             .catch(err => {
