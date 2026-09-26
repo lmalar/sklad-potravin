@@ -4,6 +4,7 @@ from datetime import datetime
 import requests
 import os
 import csv
+import sqlite3
 from io import StringIO
 
 app = Flask(__name__)
@@ -17,6 +18,8 @@ class Item(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     barcode = db.Column(db.String(50))
     name = db.Column(db.String(200), nullable=False)
+    category = db.Column(db.String(50), nullable=False, default='Potraviny')
+    group_name = db.Column(db.String(100), nullable=False, default='')
     count = db.Column(db.Integer, nullable=False, default=1)
     package_size = db.Column(db.Float, nullable=True)
     unit = db.Column(db.String(20), nullable=False)
@@ -26,25 +29,41 @@ class Item(db.Model):
 
 with app.app_context():
     db.create_all()
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(item)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'category' not in columns:
+        cursor.execute("ALTER TABLE item ADD COLUMN category VARCHAR(50) DEFAULT 'Potraviny'")
+    if 'group_name' not in columns:
+        cursor.execute("ALTER TABLE item ADD COLUMN group_name VARCHAR(100) DEFAULT ''")
+    conn.commit()
+    conn.close()
 
 @app.route('/')
 def index():
     loc_filter = request.args.get('location')
+    cat_filter = request.args.get('category')
     sort_by = request.args.get('sort', 'expiration')
     
     query = Item.query
     if loc_filter:
         query = query.filter_by(location=loc_filter)
+    if cat_filter:
+        query = query.filter_by(category=cat_filter)
         
     if sort_by == 'name':
         query = query.order_by(Item.name.asc())
     elif sort_by == 'location':
         query = query.order_by(Item.location.asc())
+    elif sort_by == 'category':
+        query = query.order_by(Item.category.asc(), Item.group_name.asc())
     else:
         query = query.order_by(Item.expiration.asc())
         
     items = query.all()
     locations = [l[0] for l in db.session.query(Item.location).distinct().all() if l[0]]
+    categories = [c[0] for c in db.session.query(Item.category).distinct().all() if c[0]]
     
     def format_size(size):
         if size is None: return ""
@@ -58,7 +77,7 @@ def index():
         elif months_diff <= 1: return "table-warning"
         return ""
         
-    return render_template('index.html', items=items, locations=locations, selected_loc=loc_filter, format_size=format_size, get_expiration_status=get_expiration_status)
+    return render_template('index.html', items=items, locations=locations, categories=categories, selected_loc=loc_filter, selected_cat=cat_filter, format_size=format_size, get_expiration_status=get_expiration_status)
 
 @app.route('/add', methods=['GET', 'POST'])
 def add():
@@ -73,6 +92,8 @@ def add():
         new_item = Item(
             barcode=request.form.get('barcode'),
             name=request.form.get('name'),
+            category=request.form.get('category', 'Potraviny'),
+            group_name=request.form.get('group_name', ''),
             count=request.form.get('count', type=int),
             package_size=float(ps_str) if ps_str else None,
             unit=request.form.get('unit'),
@@ -84,9 +105,12 @@ def add():
         return redirect(url_for('index'))
         
     locations = [l[0] for l in db.session.query(Item.location).distinct().all() if l[0]]
+    categories = [c[0] for c in db.session.query(Item.category).distinct().all() if c[0]]
+    groups = [g[0] for g in db.session.query(Item.group_name).distinct().all() if g[0]]
     if not locations: locations = ['Lednice', 'Mrazák', 'Špajz']
     last_loc = session.get('last_location', locations[0] if locations else '')
-    return render_template('add.html', locations=locations, last_loc=last_loc)
+    
+    return render_template('add.html', locations=locations, categories=categories, groups=groups, last_loc=last_loc)
 
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit(id):
@@ -94,6 +118,8 @@ def edit(id):
     if request.method == 'POST':
         item.barcode = request.form.get('barcode')
         item.name = request.form.get('name')
+        item.category = request.form.get('category', 'Potraviny')
+        item.group_name = request.form.get('group_name', '')
         item.count = request.form.get('count', type=int)
         ps_str = request.form.get('package_size')
         item.package_size = float(ps_str) if ps_str else None
@@ -105,7 +131,9 @@ def edit(id):
         return redirect(url_for('index'))
         
     locations = [l[0] for l in db.session.query(Item.location).distinct().all() if l[0]]
-    return render_template('edit.html', item=item, locations=locations)
+    categories = [c[0] for c in db.session.query(Item.category).distinct().all() if c[0]]
+    groups = [g[0] for g in db.session.query(Item.group_name).distinct().all() if g[0]]
+    return render_template('edit.html', item=item, locations=locations, categories=categories, groups=groups)
 
 @app.route('/delete/<int:id>', methods=['POST'])
 def delete(id):
@@ -147,11 +175,14 @@ def lookup(barcode):
             if data.get('status') == 1:
                 product = data.get('product', {})
                 name = (product.get('product_name') or product.get('product_name_cs') or product.get('product_name_en') or product.get('generic_name') or product.get('generic_name_cs') or product.get('brand_owner') or '')
-                return jsonify({'found': True, 'name': name, 'raw_quantity': product.get('quantity', '')})
+                cats_str = product.get('categories', '')
+                cats_list = [c.strip() for c in cats_str.split(',')] if cats_str else []
+                category = cats_list[0] if cats_list else 'Potraviny'
+                group = cats_list[-1] if len(cats_list) > 1 else ''
+                return jsonify({'found': True, 'name': name, 'raw_quantity': product.get('quantity', ''), 'category': category, 'group': group})
         except Exception: continue
     return jsonify({'found': False})
 
-# --- FUNKCE PRO PWA A EXPORT CSV ---
 @app.route('/manifest.json')
 def manifest():
     return send_from_directory('static', 'manifest.json')
@@ -162,16 +193,16 @@ def service_worker():
 
 @app.route('/export')
 def export_csv():
-    items = Item.query.order_by(Item.location.asc(), Item.name.asc()).all()
+    items = Item.query.order_by(Item.location.asc(), Item.category.asc(), Item.name.asc()).all()
     si = StringIO()
     cw = csv.writer(si, delimiter=';')
-    cw.writerow(['Produkt', 'EAN', 'Mnozstvi', 'Velikost', 'Jednotka', 'Sklad', 'Expirace'])
+    cw.writerow(['Produkt', 'Kategorie', 'Skupina', 'EAN', 'Mnozstvi', 'Velikost', 'Jednotka', 'Sklad', 'Expirace'])
     
     for item in items:
         exp = item.expiration.strftime('%m/%Y') if item.expiration else ''
-        cw.writerow([item.name, item.barcode, item.count, item.package_size, item.unit, item.location, exp])
+        cw.writerow([item.name, item.category, item.group_name, item.barcode, item.count, item.package_size, item.unit, item.location, exp])
         
-    output = '\ufeff' + si.getvalue() # BOM pro správnou češtinu v Excelu
+    output = '\ufeff' + si.getvalue()
     return Response(output, mimetype="text/csv", headers={"Content-Disposition": "attachment;filename=sklad_export.csv"})
 
 if __name__ == '__main__':
