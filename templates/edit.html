@@ -6,14 +6,38 @@
             <div class="card-body">
                 <h4 class="card-title mb-4">Upravit produkt</h4>
                 <form method="POST" action="{{ url_for('edit', id=item.id) }}">
+                    
                     <div class="mb-3">
                         <label class="form-label">Čárový kód (EAN)</label>
                         <input type="text" class="form-control" name="barcode" value="{{ item.barcode or '' }}">
                     </div>
+
                     <div class="mb-3">
                         <label class="form-label">Název produktu</label>
                         <input type="text" class="form-control" name="name" value="{{ item.name }}" required>
                     </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Kategorie</label>
+                            <input list="category_list" class="form-control" name="category" value="{{ item.category }}" required>
+                            <datalist id="category_list">
+                                {% for c in categories %}
+                                <option value="{{ c }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Skupina</label>
+                            <input list="group_list" class="form-control" name="group_name" value="{{ item.group_name }}">
+                            <datalist id="group_list">
+                                {% for g in groups %}
+                                <option value="{{ g }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-4 mb-3">
                             <label class="form-label">Kusů / Balení</label>
@@ -34,24 +58,28 @@
                             </select>
                         </div>
                     </div>
+
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">Sklad / Umístění</label>
-                            <input type="text" class="form-control" name="location" list="locations" value="{{ item.location }}" required>
-                            <datalist id="locations">
+                            <select class="form-select" name="location">
                                 {% for loc in locations %}
-                                <option value="{{ loc }}">
+                                <option value="{{ loc }}" {% if item.location == loc %}selected{% endif %}>{{ loc }}</option>
                                 {% endfor %}
-                            </datalist>
+                            </select>
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label">Expirace</label>
                             <input type="month" class="form-control" name="expiration" value="{{ item.expiration.strftime('%Y-%m') if item.expiration else '' }}">
                         </div>
                     </div>
+
                     <div class="d-flex justify-content-between mt-4">
-                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Zrušit</a>
-                        <button type="submit" class="btn btn-primary px-4">Uložit změny</button>
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">Zpět</a>
+                        <div>
+                            <button type="submit" formaction="{{ url_for('delete', id=item.id) }}" class="btn btn-danger me-2" onclick="return confirm('Opravdu chcete tento produkt smazat?');">Smazat</button>
+                            <button type="submit" class="btn btn-primary px-4">Uložit změny</button>
+                        </div>
                     </div>
                 </form>
             </div>
