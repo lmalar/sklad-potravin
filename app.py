@@ -89,6 +89,7 @@ def index():
         selected_loc=loc_filter,
         selected_cat=cat_filter,
         search_q=search_q,
+        sort_by=sort_by,
         format_size=format_size,
         get_expiration_status=get_expiration_status
     )
@@ -178,7 +179,7 @@ def delete(id):
     item = Item.query.get_or_404(id)
     db.session.delete(item)
     db.session.commit()
-    return redirect(url_for('index'))
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/delete_location', methods=['POST'])
 def delete_location():
@@ -191,12 +192,20 @@ def delete_location():
 @app.route('/update_count/<int:id>/<action>', methods=['POST'])
 def update_count(id, action):
     item = Item.query.get_or_404(id)
-    if action == 'increase': item.count += 1
+    deleted = False
+    if action == 'increase':
+        item.count += 1
     elif action == 'decrease':
         item.count -= 1
-        if item.count <= 0: db.session.delete(item)
+        if item.count <= 0:
+            db.session.delete(item)
+            deleted = True
     db.session.commit()
-    return redirect(url_for('index'))
+    
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'count': 0 if deleted else item.count, 'deleted': deleted})
+        
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/api/lookup/<barcode>')
 def lookup(barcode):
