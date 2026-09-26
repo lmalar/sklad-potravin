@@ -3,6 +3,8 @@
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         <form method="GET" action="{{ url_for('index') }}" id="filterForm" class="row g-2 align-items-center">
+            <input type="hidden" name="sort" value="{{ sort_by or 'expiration' }}">
+            
             <div class="col-auto">
                 <label class="col-form-label fw-bold">Sklad:</label>
             </div>
@@ -42,17 +44,18 @@
     <table class="table table-hover align-middle mb-0" id="inventoryTable">
         <thead class="table-light">
             <tr>
-                <th><a href="{{ url_for('index', sort='name', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Produkt ⇅</a></th>
-                <th><a href="{{ url_for('index', sort='category', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Zařazení ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='name', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark sort-link">Produkt ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='category', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark sort-link">Zařazení ⇅</a></th>
                 <th>Množství</th>
-                <th><a href="{{ url_for('index', sort='location', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Sklad ⇅</a></th>
-                <th><a href="{{ url_for('index', sort='expiration', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Expirace ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='location', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark sort-link">Sklad ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='expiration', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark sort-link">Expirace ⇅</a></th>
                 <th class="text-end">Akce</th>
             </tr>
         </thead>
         <tbody>
             {% for item in items %}
             <tr class="item-row {{ get_expiration_status(item.expiration) }}"
+                id="row-{{ item.id }}"
                 data-search="{{ item.name }} {{ item.barcode or '' }} {{ item.category or '' }} {{ item.group_name or '' }}">
                 <td>
                     <strong>{{ item.name }}</strong>
@@ -67,11 +70,11 @@
                 </td>
                 <td>
                     <div class="d-flex align-items-center">
-                        <form method="POST" action="{{ url_for('update_count', id=item.id, action='decrease') }}" class="m-0">
+                        <form method="POST" action="{{ url_for('update_count', id=item.id, action='decrease') }}" class="m-0 count-form" data-id="{{ item.id }}">
                             <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0">-</button>
                         </form>
-                        <span class="mx-2 fw-bold">{{ item.count }}x</span>
-                        <form method="POST" action="{{ url_for('update_count', id=item.id, action='increase') }}" class="m-0">
+                        <span class="mx-2 fw-bold" id="count-{{ item.id }}">{{ item.count }}x</span>
+                        <form method="POST" action="{{ url_for('update_count', id=item.id, action='increase') }}" class="m-0 count-form" data-id="{{ item.id }}">
                             <button type="submit" class="btn btn-sm btn-outline-secondary px-2 py-0">+</button>
                         </form>
                         <span class="text-muted ms-2">
@@ -113,12 +116,33 @@ function normalizeText(str) {
 
 function filterTable() {
     let input = document.getElementById('searchInput');
-    let filter = normalizeText(input.value.trim());
+    let rawValue = input.value.trim();
+    let filter = normalizeText(rawValue);
     let rows = document.querySelectorAll('#inventoryTable tbody tr.item-row');
     
     rows.forEach(row => {
         let searchableText = normalizeText(row.getAttribute('data-search'));
         row.style.display = searchableText.includes(filter) ? '' : 'none';
+    });
+
+    // Udržuje hledaný výraz v URL adrese prohlížeče bez načítání stránky
+    const url = new URL(window.location);
+    if (rawValue) {
+        url.searchParams.set('q', rawValue);
+    } else {
+        url.searchParams.delete('q');
+    }
+    window.history.replaceState({}, '', url);
+
+    // Aktualizuje odkazy pro řazení, aby si pamatovaly aktuálně napsaný text
+    document.querySelectorAll('.sort-link').forEach(link => {
+        const linkUrl = new URL(link.href);
+        if (rawValue) {
+            linkUrl.searchParams.set('q', rawValue);
+        } else {
+            linkUrl.searchParams.delete('q');
+        }
+        link.href = linkUrl.toString();
     });
 }
 
@@ -131,6 +155,32 @@ searchInput.addEventListener('keydown', function(e) {
         e.preventDefault();
         filterTable();
     }
+});
+
+// Okamžitá změna množství (+ / -) na pozadí bez vymazání filtru
+document.querySelectorAll('.count-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const itemId = this.getAttribute('data-id');
+        
+        fetch(this.action, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                if (data.deleted) {
+                    const row = document.getElementById('row-' + itemId);
+                    if (row) row.remove();
+                } else {
+                    const countSpan = document.getElementById('count-' + itemId);
+                    if (countSpan) countSpan.innerText = data.count + 'x';
+                }
+            }
+        })
+        .catch(() => this.submit());
+    });
 });
 
 document.addEventListener('DOMContentLoaded', filterTable);
