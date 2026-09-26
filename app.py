@@ -42,9 +42,13 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    loc_filter = request.args.get('location')
-    cat_filter = request.args.get('category')
+    loc_filter = request.args.get('location', '')
+    cat_filter = request.args.get('category', '')
+    search_q = request.args.get('q', '')
     sort_by = request.args.get('sort', 'expiration')
+    
+    if loc_filter in ('Všechny', 'None'): loc_filter = ''
+    if cat_filter in ('Všechny', 'None'): cat_filter = ''
     
     query = Item.query
     if loc_filter:
@@ -77,7 +81,17 @@ def index():
         elif months_diff <= 1: return "table-warning"
         return ""
         
-    return render_template('index.html', items=items, locations=locations, categories=categories, selected_loc=loc_filter, selected_cat=cat_filter, format_size=format_size, get_expiration_status=get_expiration_status)
+    return render_template(
+        'index.html',
+        items=items,
+        locations=locations,
+        categories=categories,
+        selected_loc=loc_filter,
+        selected_cat=cat_filter,
+        search_q=search_q,
+        format_size=format_size,
+        get_expiration_status=get_expiration_status
+    )
 
 @app.route('/add', methods=['GET', 'POST'])
 def add():
