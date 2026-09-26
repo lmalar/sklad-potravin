@@ -2,7 +2,7 @@
 {% block content %}
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ url_for('index') }}" class="row g-2 align-items-center">
+        <form method="GET" action="{{ url_for('index') }}" id="filterForm" class="row g-2 align-items-center">
             <div class="col-auto">
                 <label class="col-form-label fw-bold">Sklad:</label>
             </div>
@@ -28,7 +28,7 @@
             </div>
 
             <div class="col">
-                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Hledat produkt, kategorii nebo skupinu...">
+                <input type="search" name="q" id="searchInput" value="{{ search_q or '' }}" class="form-control form-control-sm" placeholder="Hledat produkt, EAN nebo skupinu...">
             </div>
 
             <div class="col-auto">
@@ -42,17 +42,18 @@
     <table class="table table-hover align-middle mb-0" id="inventoryTable">
         <thead class="table-light">
             <tr>
-                <th><a href="{{ url_for('index', sort='name', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Produkt ⇅</a></th>
-                <th><a href="{{ url_for('index', sort='category', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Zařazení ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='name', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Produkt ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='category', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Zařazení ⇅</a></th>
                 <th>Množství</th>
-                <th><a href="{{ url_for('index', sort='location', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Sklad ⇅</a></th>
-                <th><a href="{{ url_for('index', sort='expiration', location=selected_loc, category=selected_cat) }}" class="text-decoration-none text-dark">Expirace ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='location', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Sklad ⇅</a></th>
+                <th><a href="{{ url_for('index', sort='expiration', location=selected_loc, category=selected_cat, q=search_q) }}" class="text-decoration-none text-dark">Expirace ⇅</a></th>
                 <th class="text-end">Akce</th>
             </tr>
         </thead>
         <tbody>
             {% for item in items %}
-            <tr class="{{ get_expiration_status(item.expiration) }}">
+            <tr class="item-row {{ get_expiration_status(item.expiration) }}"
+                data-search="{{ item.name }} {{ item.barcode or '' }} {{ item.category or '' }} {{ item.group_name or '' }}">
                 <td>
                     <strong>{{ item.name }}</strong>
                     <br>
@@ -106,13 +107,32 @@
 {% endif %}
 
 <script>
-document.getElementById('searchInput').addEventListener('keyup', function() {
-    let filter = this.value.toLowerCase();
-    let rows = document.querySelectorAll('#inventoryTable tbody tr');
+function normalizeText(str) {
+    return (str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function filterTable() {
+    let input = document.getElementById('searchInput');
+    let filter = normalizeText(input.value.trim());
+    let rows = document.querySelectorAll('#inventoryTable tbody tr.item-row');
+    
     rows.forEach(row => {
-        let text = row.innerText.toLowerCase();
-        row.style.display = text.includes(filter) ? '' : 'none';
+        let searchableText = normalizeText(row.getAttribute('data-search'));
+        row.style.display = searchableText.includes(filter) ? '' : 'none';
     });
+}
+
+const searchInput = document.getElementById('searchInput');
+
+searchInput.addEventListener('input', filterTable);
+
+searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        filterTable();
+    }
 });
+
+document.addEventListener('DOMContentLoaded', filterTable);
 </script>
 {% endblock %}
