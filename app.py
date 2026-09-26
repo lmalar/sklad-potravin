@@ -83,8 +83,17 @@ def index():
 def add():
     if request.method == 'POST':
         location = request.form.get('location_select')
-        if location == '_NEW_': location = request.form.get('location_new')
+        if location == '_NEW_':
+            location = request.form.get('location_new', '').strip()
         session['last_location'] = location
+        
+        category = request.form.get('category_select')
+        if category == '_NEW_':
+            category = request.form.get('category_new', '').strip() or 'Potraviny'
+            
+        group_name = request.form.get('group_select')
+        if group_name == '_NEW_':
+            group_name = request.form.get('group_new', '').strip()
         
         ps_str = request.form.get('package_size')
         exp_str = request.form.get('expiration')
@@ -92,8 +101,8 @@ def add():
         new_item = Item(
             barcode=request.form.get('barcode'),
             name=request.form.get('name'),
-            category=request.form.get('category', 'Potraviny'),
-            group_name=request.form.get('group_name', ''),
+            category=category,
+            group_name=group_name or '',
             count=request.form.get('count', type=int),
             package_size=float(ps_str) if ps_str else None,
             unit=request.form.get('unit'),
@@ -107,7 +116,9 @@ def add():
     locations = [l[0] for l in db.session.query(Item.location).distinct().all() if l[0]]
     categories = [c[0] for c in db.session.query(Item.category).distinct().all() if c[0]]
     groups = [g[0] for g in db.session.query(Item.group_name).distinct().all() if g[0]]
+    
     if not locations: locations = ['Lednice', 'Mrazák', 'Špajz']
+    if not categories: categories = ['Potraviny', 'Drogerie', 'Kosmetika']
     last_loc = session.get('last_location', locations[0] if locations else '')
     
     return render_template('add.html', locations=locations, categories=categories, groups=groups, last_loc=last_loc)
@@ -116,23 +127,36 @@ def add():
 def edit(id):
     item = Item.query.get_or_404(id)
     if request.method == 'POST':
+        location = request.form.get('location_select')
+        if location == '_NEW_':
+            location = request.form.get('location_new', '').strip()
+            
+        category = request.form.get('category_select')
+        if category == '_NEW_':
+            category = request.form.get('category_new', '').strip() or 'Potraviny'
+            
+        group_name = request.form.get('group_select')
+        if group_name == '_NEW_':
+            group_name = request.form.get('group_new', '').strip()
+
         item.barcode = request.form.get('barcode')
         item.name = request.form.get('name')
-        item.category = request.form.get('category', 'Potraviny')
-        item.group_name = request.form.get('group_name', '')
+        item.category = category
+        item.group_name = group_name or ''
         item.count = request.form.get('count', type=int)
         ps_str = request.form.get('package_size')
         item.package_size = float(ps_str) if ps_str else None
         item.unit = request.form.get('unit')
         exp_str = request.form.get('expiration')
         item.expiration = datetime.strptime(exp_str, '%Y-%m').date() if exp_str else None
-        item.location = request.form.get('location')
+        item.location = location
         db.session.commit()
         return redirect(url_for('index'))
         
     locations = [l[0] for l in db.session.query(Item.location).distinct().all() if l[0]]
     categories = [c[0] for c in db.session.query(Item.category).distinct().all() if c[0]]
     groups = [g[0] for g in db.session.query(Item.group_name).distinct().all() if g[0]]
+    if not categories: categories = ['Potraviny', 'Drogerie', 'Kosmetika']
     return render_template('edit.html', item=item, locations=locations, categories=categories, groups=groups)
 
 @app.route('/delete/<int:id>', methods=['POST'])
