@@ -43,21 +43,24 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">Kategorie</label>
-                            <input list="category_list" class="form-control" id="category" name="category" value="Potraviny" required>
-                            <datalist id="category_list">
+                            <select class="form-select mb-2" name="category_select" id="category_select" onchange="toggleNewField('category_select', 'category_new', true)">
                                 {% for c in categories %}
-                                <option value="{{ c }}"></option>
+                                <option value="{{ c }}" {% if c == 'Potraviny' %}selected{% endif %}>{{ c }}</option>
                                 {% endfor %}
-                            </datalist>
+                                <option value="_NEW_">➕ Přidat novou kategorii...</option>
+                            </select>
+                            <input type="text" class="form-control" name="category_new" id="category_new" placeholder="Zadejte novou kategorii..." style="display: none;">
                         </div>
                         <div class="col-6 mb-3">
                             <label class="form-label">Skupina</label>
-                            <input list="group_list" class="form-control" id="group_name" name="group_name" placeholder="např. Těstoviny">
-                            <datalist id="group_list">
+                            <select class="form-select mb-2" name="group_select" id="group_select" onchange="toggleNewField('group_select', 'group_new', true)">
+                                <option value="">-- Bez skupiny --</option>
                                 {% for g in groups %}
-                                <option value="{{ g }}"></option>
+                                <option value="{{ g }}">{{ g }}</option>
                                 {% endfor %}
-                            </datalist>
+                                <option value="_NEW_">➕ Přidat novou skupinu...</option>
+                            </select>
+                            <input type="text" class="form-control" name="group_new" id="group_new" placeholder="Např. Těstoviny, Rajčata..." style="display: none;">
                         </div>
                     </div>
 
@@ -85,7 +88,7 @@
                     <div class="row">
                         <div class="col-6 mb-3">
                             <label class="form-label">Sklad / Umístění</label>
-                            <select class="form-select mb-2" name="location_select" id="location_select" onchange="toggleNewLocation()">
+                            <select class="form-select mb-2" name="location_select" id="location_select" onchange="toggleNewField('location_select', 'location_new', true)">
                                 {% for loc in locations %}
                                 <option value="{{ loc }}" {% if loc == last_loc %}selected{% endif %}>{{ loc }}</option>
                                 {% endfor %}
@@ -113,18 +116,37 @@
 {% block scripts %}
 <script src="https://unpkg.com/html5-qrcode"></script>
 <script>
-    function toggleNewLocation() {
-        let select = document.getElementById('location_select');
-        let input = document.getElementById('location_new');
+    function toggleNewField(selectId, inputId, isRequired) {
+        let select = document.getElementById(selectId);
+        let input = document.getElementById(inputId);
         if (select.value === '_NEW_') {
             input.style.display = 'block';
-            input.required = true;
+            input.required = isRequired;
         } else {
             input.style.display = 'none';
             input.required = false;
         }
     }
-    toggleNewLocation();
+
+    function setSelectOrNew(selectId, inputId, value) {
+        if (!value) return;
+        let select = document.getElementById(selectId);
+        let input = document.getElementById(inputId);
+        let found = Array.from(select.options).some(o => o.value.toLowerCase() === value.toLowerCase());
+        if (found) {
+            let matchOpt = Array.from(select.options).find(o => o.value.toLowerCase() === value.toLowerCase());
+            select.value = matchOpt.value;
+            toggleNewField(selectId, inputId, true);
+        } else {
+            select.value = '_NEW_';
+            toggleNewField(selectId, inputId, true);
+            input.value = value;
+        }
+    }
+
+    toggleNewField('location_select', 'location_new', true);
+    toggleNewField('category_select', 'category_new', true);
+    toggleNewField('group_select', 'group_new', true);
 
     let html5QrCode;
     let lastScannedCode = "";
@@ -193,8 +215,8 @@
                 if(data.found && data.name) {
                     document.getElementById('name').value = data.name;
                     
-                    if(data.category) document.getElementById('category').value = data.category;
-                    if(data.group) document.getElementById('group_name').value = data.group;
+                    if(data.category) setSelectOrNew('category_select', 'category_new', data.category);
+                    if(data.group) setSelectOrNew('group_select', 'group_new', data.group);
                     
                     if(data.raw_quantity) {
                         let q = data.raw_quantity.replace(',', '.').trim();
